@@ -1,9 +1,10 @@
+use core::panic;
 /**
  * Command-line Space Invaders, personal introduction to systems-level programming with Rust.
  * @author Maxylan (https://github.com/Maxylan)
  * @license MIT
  */
-use std::{collections::LinkedList, time};
+use std::{collections::LinkedList, error::Error, time};
 use termsize::Size;
 
 mod entities;
@@ -13,6 +14,7 @@ pub struct GameState {
     size: Size,
     enemies: LinkedList<entities::Alien>,
     projectiles: LinkedList<entities::Projectile>,
+    player: entities::Player,
 }
 
 impl GameState {
@@ -25,6 +27,7 @@ impl GameState {
             },
             enemies: LinkedList::new(),
             projectiles: LinkedList::new(),
+            player: entities::Player { pos: 0_u16 },
         };
     }
     /**
@@ -50,15 +53,26 @@ impl GameState {
     pub fn enemies(self) -> LinkedList<entities::Alien> {
         return self.enemies;
     }
+    /** Return all projectiles in the current GameState instance. */
+    pub fn projectiles(self) -> LinkedList<entities::Projectile> {
+        return self.projectiles;
+    }
+    /** Return all projectiles in the current GameState instance. */
+    pub fn player(self) -> entities::Player {
+        return self.player;
+    }
 }
 
-#[derive(Debug)]
 pub struct Arguments {
     pub frame_rate: Option<u8>,
     pub bullet_time: u8,
     pub enemy_time: u8,
+    pub panic_on_errors: bool,
 }
 
+/**
+ * Starts the game by initiating the loop.
+ */
 pub fn start(args: Arguments) {
     let target_frame_time: f32 = match args.frame_rate {
         Some(rate) if rate > 0 => 1_f32 / rate as f32,
@@ -66,42 +80,97 @@ pub fn start(args: Arguments) {
     };
 
     let mut state = GameState::new();
-    let mut t = time::Instant::now();
-    let mut meassure = 0_f32;
-    loop {
-        if meassure >= target_frame_time {
-            // Clear the previous screen.
-            if let Some(err) = clearscreen::clear().err() {
-                println!("Cought an error calling 'clearscreen::clear()' : {}", err);
-                return;
-            }
+    state.evaluate_state().expect(
+        "Failed to start! 'GameState::evaluate_state()' paniced! Are you running TempleOS?",
+    );
 
-            // Evaluate / Re-calculate game-state.
-            // This validates enemy, player and projectile position in relation to current terminal size.
-            state.evaluate_state();
+    // Shift 'size.rows' to effectively 'half'-it, determining player's starting position.
+    state.player.pos = state.size.rows >> 1_u16;
+
+    let mut t = time::Instant::now();
+    let mut frame_time = 0_f32;
+    loop {
+        if frame_time >= target_frame_time {
+            let meassure: u16 = (1_f32 / frame_time).round() as u16;
+            t = time::Instant::now();
+            frame_time = 0_f32;
 
             // Run an iteration of the game loop.
-            game_loop((1_f32 / meassure).round() as u16);
+            let frame_execution_result = game_loop(&mut state);
+            match frame_execution_result {
+                Ok(_) => render(meassure, &state),
+                Err(error_message) => {
+                    if args.panic_on_errors {
+                        panic!("Panic! {}", error_message);
+                    } else {
+                        println!("Error! {}", error_message);
+                    }
+                }
+            }
 
-            meassure = 0_f32;
-            t = time::Instant::now();
             continue;
         }
 
         // Increment 'meassure' by elapsed time (..meassured in microseconds) in seconds.
-        meassure += t.elapsed().subsec_micros() as f32 / 1000000_f32;
+        frame_time += t.elapsed().subsec_micros() as f32 / 1000000_f32;
     }
-}
-
-fn construct_game_elements() {
-    termsize::get().map(|size| println!("rows {} cols {}", size.rows, size.cols));
 }
 
 /**
  * Main game loop.
  * Runs capped to the specified framerate, with the actual framerate meassurement passed as an argument.
  */
-fn game_loop(meassured_frame_rate: u16) {
+fn game_loop(state: &mut GameState) -> Result<(), String> {
+    // Clear the previous screen.
+    if let Err(e) = clearscreen::clear() {
+        return Err(format!(
+            "Cought an error calling 'clearscreen::clear()', {e}"
+        ));
+    }
 
-    // Construct game elements.
+    // Evaluate / Re-calculate game-state.
+    // This validates enemy, player and projectile position in relation to current terminal size.
+    state.evaluate_state()?;
+
+    return Ok(());
+}
+
+fn render(frame_rate: u16, state: &GameState) {
+    println!();
+    let mut line: String;
+    // Line #1 - Debugging / Messaging
+    let message = format!("Framerate: {frame_rate}");
+    println!(message:)
+}
+
+/**
+ * Pad-out the string length to fill out the remaining cells of a row.
+ */
+fn right_pad(start_index: u16, length: u16, string_content: &str) -> String {
+    if start_index >= length {
+        return vec![" "; length as usize].join("");
+    };
+
+    let line: String = match start_index {
+        0 => String::from(""),
+        _ => vec![" "; start_index as usize].join(""),
+    };
+
+    line + string_content
+}
+
+/**
+ * ..I don't need no NPM Package!
+ */
+fn left_pad(start_index: u16, length: u16, string_content: &str) -> String {
+    if start_index >= length {
+        return vec![" "; length as usize].join("");
+    };
+
+    let line: String = match start_index {
+        0 => String::from(""),
+        _ => vec![" "; start_index as usize].join(""),
+    };
+
+    line + string_content
 }

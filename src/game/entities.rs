@@ -4,7 +4,9 @@
  * @license MIT
  */
 #[derive(Debug)]
-pub struct Player {}
+pub struct Player {
+    pub pos: u16,
+}
 
 #[derive(Debug)]
 pub struct Projectile {}
