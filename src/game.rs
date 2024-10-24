@@ -14,6 +14,7 @@ pub struct GameState {
     size: Size,
     enemies: LinkedList<entities::Alien>,
     projectiles: LinkedList<entities::Projectile>,
+    falling_stars: LinkedList<entities::FallingStar>,
     player: entities::Player,
 }
 
@@ -27,6 +28,7 @@ impl GameState {
             },
             enemies: LinkedList::new(),
             projectiles: LinkedList::new(),
+            falling_stars: LinkedList::new(),
             player: entities::Player { pos: 0_u16 },
         };
     }
@@ -46,6 +48,8 @@ impl GameState {
                 "Failed to compute terminal size ('termsize::get()')",
             ));
         }
+
+        // TODO! Process game state..
 
         return Ok(());
     }
@@ -84,8 +88,11 @@ pub fn start(args: Arguments) {
         "Failed to start! 'GameState::evaluate_state()' paniced! Are you running TempleOS?",
     );
 
+    // Populate state..
+    state.falling_stars.push_back(entities::FallingStar { pos: 0, col: 0 });
+
     // Shift 'size.rows' to effectively 'half'-it, determining player's starting position.
-    state.player.pos = state.size.rows >> 1_u16;
+    state.player.pos = state.size.rows >> 1_u8;
 
     let mut t = time::Instant::now();
     let mut frame_time = 0_f32;
@@ -139,38 +146,48 @@ fn render(frame_rate: u16, state: &GameState) {
     println!();
     let mut line: String;
     // Line #1 - Debugging / Messaging
-    let message = format!("Framerate: {frame_rate}");
-    println!(message:)
+    let message = right_pad(format!("Framerate: {frame_rate}"), state.size.rows.into());
+    println!("{}", message);
+
+    let mut start_at_row = 1;
+    if state.size.rows > 10 {
+        println!("{}", "=".repeat(state.size.rows as usize));
+        start_at_row += 1;
+    }
+
+    // TODO! Rest of rendering lines..
 }
 
 /**
  * Pad-out the string length to fill out the remaining cells of a row.
  */
-fn right_pad(start_index: u16, length: u16, string_content: &str) -> String {
-    if start_index >= length {
-        return vec![" "; length as usize].join("");
+fn right_pad(mut string_content: String, length: usize) -> String {
+    let char_count: usize = string_content.chars().count();
+
+    if char_count == length {
+        return string_content;
+    } else if char_count > length {
+        return string_content.split_at(length).0.into();
     };
 
-    let line: String = match start_index {
-        0 => String::from(""),
-        _ => vec![" "; start_index as usize].join(""),
-    };
-
-    line + string_content
+    string_content += &" ".repeat(length - char_count);
+    return string_content;
 }
 
 /**
  * ..I don't need no NPM Package!
  */
-fn left_pad(start_index: u16, length: u16, string_content: &str) -> String {
+fn left_pad(start_index: u16, mut string_content: String, length: u16) -> String {
     if start_index >= length {
         return vec![" "; length as usize].join("");
     };
 
     let line: String = match start_index {
-        0 => String::from(""),
-        _ => vec![" "; start_index as usize].join(""),
+        0 => String::new(),
+        // _ => vec![" "; start_index as usize].join(""),
+        _ => " ".repeat(start_index.into())
     };
 
-    line + string_content
+    string_content.insert_str(0, &line); 
+    return string_content;
 }

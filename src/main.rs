@@ -9,6 +9,7 @@ fn main() {
     game::start(game::Arguments {
         frame_rate: Some(8),
         bullet_time: 2,
-        enemy_time: 4,
+        enemy_time: 8,
+        panic_on_errors: true,
     });
 }

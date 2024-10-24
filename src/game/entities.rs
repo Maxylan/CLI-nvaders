@@ -9,6 +9,12 @@ pub struct Player {
 }
 
 #[derive(Debug)]
+pub struct FallingStar {
+    pub pos: u16,
+    pub col: u16,
+}
+
+#[derive(Debug)]
 pub struct Projectile {}
 
 #[derive(Debug)]
