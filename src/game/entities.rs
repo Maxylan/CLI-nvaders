@@ -12,6 +12,7 @@ pub struct Player {
 pub struct FallingStar {
     pub pos: u16,
     pub col: u16,
+    pub entity: char,
 }
 
 #[derive(Debug)]
